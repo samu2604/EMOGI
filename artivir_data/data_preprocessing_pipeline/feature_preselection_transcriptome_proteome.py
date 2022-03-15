@@ -1,4 +1,4 @@
-from statistics import mean, stdev
+from statistics import mean, stdev, median
 import pandas as pd
 import numpy as np
 import argparse
@@ -7,8 +7,54 @@ import json
 from tqdm import tqdm
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
-import random    
+import random   
 
+
+def create_adjacency_matrix_and_feature_matrix(ppi_file_path :str, feature_file_path :str):
+    df_string_ppi = pd.read_csv(ppi_file_path)
+    json_file = open(feature_file_path, "r")
+    features_dict = json.load(json_file)    
+    gene_list = [gene_name for gene_name in features_dict.keys()]
+    list_of_hub_genes = df_string_ppi["gene_name_1"].unique()
+    
+    if not os.path.isfile("network.csv") and not os.path.isfile("features.csv") and not os.path.isfile("randomized_gene_list.txt"):
+        print("Created randomized gene list")
+        gene_indeces_list =  np.random.permutation(np.arange(0, len(gene_list)))
+        randomized_gene_list = [gene_list[index] for index in gene_indeces_list]   
+        np.savetxt("randomized_gene_list.txt", randomized_gene_list, delimiter = " ", fmt="%s")
+          
+        network = np.zeros([len(randomized_gene_list) ,len(randomized_gene_list)])
+        print("Adjacency matrix creation")
+        for gene in list_of_hub_genes:
+            genes_connected_to_gene = df_string_ppi[df_string_ppi["gene_name_1"] == gene]["gene_name_2"].values
+            index_gene = randomized_gene_list.index(gene)
+            for gene_connected in genes_connected_to_gene:          
+                index_gene_connected_to_gene = randomized_gene_list.index(gene_connected)
+                if network[index_gene, index_gene_connected_to_gene] == 0 and index_gene != index_gene_connected_to_gene: 
+                    network[index_gene, index_gene_connected_to_gene] = 1 # here we can use a value proportional to the interaction strength 
+                    network[index_gene_connected_to_gene, index_gene] = 1 # here we can use a value proportional to the interaction strength
+        np.savetxt("network.csv", network, delimiter = ",") 
+
+        features = np.zeros([len(randomized_gene_list) ,2])
+        print("Feature matrix creation")
+        for gene_index, gene in enumerate(randomized_gene_list):
+            features[gene_index, 0] = features_dict[gene][2] # transcriptomics at 24h
+            features[gene_index, 1] = features_dict[gene][5] # proteomics at 24h  
+        np.savetxt("features.csv", network, delimiter = ",")                 
+    else:
+        network =  np.loadtxt(open("network.csv"), delimiter = ",") 
+        features = np.loadtxt(open("features.csv"), delimiter = ",")   
+        randomized_gene_list = np.genfromtxt("randomized_gene_list.txt", dtype=str)    
+
+    node_names = []
+    for gene_name in randomized_gene_list:
+        node_names.append([gene_name, gene_name])
+    
+    node_names = np.array(node_names, dtype=object)    
+    feat_names = np.array(["transcriptomics_24h", "proteomics_24"], dtype=object)
+                     
+    return network, features, node_names, feat_names
+    
 def compute_pca_and_plot(positive_features, negative_features):
     # positive_features = [[features[i] for i in [2, 5]] for features in positive_features]
     # negative_features = [[features[i] for i in [2, 5]] for features in negative_features]
@@ -65,7 +111,82 @@ def compute_pca_and_plot(positive_features, negative_features):
     
     plt.show()
     
+def sample_from_list_and_return_remaining_list(list_to_sample, number_elements_to_sample):
+    if number_elements_to_sample > len(list_to_sample):
+        print("Number of elements to sample is bigger then the sampling list")
+    sampled_elements = random.sample(list_to_sample, number_elements_to_sample)
+    for element in sampled_elements:
+       list_to_sample.remove(element)
+                
+    return sampled_elements, list_to_sample
+    
+def train_test_val_sampler(list_to_sample, number_train_samples, number_test_samples, number_val_samples):
+    training_samples, list_to_sample = sample_from_list_and_return_remaining_list(list_to_sample, number_train_samples)
+    test_samples, list_to_sample = sample_from_list_and_return_remaining_list(list_to_sample, number_test_samples)
+    validation_samples, list_to_sample = sample_from_list_and_return_remaining_list(list_to_sample, number_val_samples)
+    return training_samples, test_samples, validation_samples
+        
+    
+def train_test_val_split(host_factor_data_path, strong_host_factors):
+    node_gene_list = np.genfromtxt("randomized_gene_list.txt", dtype=str)
+    nodes_number = len(node_gene_list)
+    y_train = np.zeros([nodes_number, 1], float)
+    y_test = np.zeros([nodes_number, 1], float)
+    y_val = np.zeros([nodes_number, 1], float)
+    train_mask = np.zeros(nodes_number, float)
+    test_mask = np.zeros(nodes_number, float)
+    val_mask = np.zeros(nodes_number, float)
+    
+    # Read positive labels
+    positive_host_factors_file = open(strong_host_factors, "r")
+    positive_host_factors = []
+    for line in positive_host_factors_file:
+        gene = line.strip()
+        positive_host_factors.append(gene)
+    
+    host_factors = pd.ExcelFile(host_factor_data_path)
+    host_factors_dfs = {sheet_name: host_factors.parse(sheet_name) for sheet_name in host_factors.sheet_names}
+    potential_host_factors_to_remove = host_factors_dfs["host_factors"]["Gene name"].unique()    
+    
+    # select and split positive labels in my dataset
+    positive_labels = []
+    for gene in positive_host_factors:
+        if gene in node_gene_list:
+            positive_labels.append(gene)
+    
+    number_positives = len(positive_labels)
+    train_set_pos = int(number_positives * 0.65)
+    test_set_pos = int(number_positives * 0.25)
+    val_set_pos = int(number_positives * 0.1) + (number_positives - test_set_pos - train_set_pos - int(number_positives * 0.1))       
+    
+    # select the potential negatives in my dataset
+    potential_negative_labels = []     
+    for gene in node_gene_list:
+        if gene not in potential_host_factors_to_remove and gene not in positive_labels:
+            potential_negative_labels.append(gene)
+            
+    training_positive_samples, test_positive_samples, validation_positive_samples = train_test_val_sampler(positive_labels, train_set_pos, test_set_pos, val_set_pos)    
+    training_negative_samples, test_negative_samples, validation_negative_samples = train_test_val_sampler(potential_negative_labels, 3*train_set_pos, 3*test_set_pos, 3*val_set_pos)    
+    
+    fill_labels_and_mask(training_positive_samples, training_negative_samples ,node_gene_list, y_train, train_mask)
+    fill_labels_and_mask(test_positive_samples, test_negative_samples ,node_gene_list, y_test, test_mask)
+    fill_labels_and_mask(validation_positive_samples, validation_negative_samples ,node_gene_list, y_val, val_mask)  
+    
+    # print(f" y_train {sum(y_train)} {len(training_positive_samples)}")
+    # print(f" y_test {sum(y_test)} {len(test_positive_samples)}")
+    # print(f" y_val {sum(y_val)} {len(validation_positive_samples)}")
+    # print(f" train_mask {sum(train_mask)} {len(training_positive_samples) + len(training_negative_samples)}")
+    # print(f" test_mask {sum(test_mask)} {len(test_positive_samples) + len(test_negative_samples)}")
+    # print(f" val_mask {sum(val_mask)} {len(validation_positive_samples) + len(validation_negative_samples)}")
+        
+    return y_train, train_mask, y_test, test_mask, y_val, val_mask
 
+def fill_labels_and_mask(positive_samples, negative_samples ,node_gene_list, y, mask):
+    for gene in positive_samples:
+        y[np.where(node_gene_list == gene), 0] = 1.0
+        mask[np.where(node_gene_list == gene)] = 1.0 #np.where(np.array(lista) == "KIF23")[0][0]
+    for gene in  negative_samples:
+        mask[np.where(node_gene_list == gene)] = 1.0
 
 def do_pca_positives_vs_negatives(host_factor_data_path, strong_host_factors):
     positive_host_factors_file = open(strong_host_factors, "r")
@@ -92,7 +213,7 @@ def do_pca_positives_vs_negatives(host_factor_data_path, strong_host_factors):
             positives_feature_vectors.append(features_dict[gene])
         if gene not in positive_host_factors and gene not in potential_host_factors_to_remove:
             negatives_feature_vectors.append(features_dict[gene])  
-    #negatives_feature_vectors = random.sample(negatives_feature_vectors, 4*len(positives_feature_vectors))        
+    negatives_feature_vectors = random.sample(negatives_feature_vectors, 4*len(positives_feature_vectors))        
     compute_pca_and_plot(positives_feature_vectors, negatives_feature_vectors)
     
 
@@ -306,6 +427,8 @@ def parse_args():
                     default="../strong_host_factors.txt",
                     type=str
                     )  
+    parser.add_argument( "input_data_type", type=str, choices=["transcriptomics", "proteomics", "transcriptomics-proteomics"],
+                    help="Choose which data you want to use to create the input dataset for EMOGI")
     
     args = parser.parse_args()
     return args                   
@@ -318,13 +441,18 @@ if __name__ == "__main__":
     path_to_string = args.path_to_string
     uniprot_file_path = args.uniprot_file_path
     strong_host_factors = args.strong_host_factors
+    input_data_type = args.input_data_type
     
     data_preprocessing(input_data_path)
     import_and_filter_string_ppi(path_to_string)
     map_ensp_to_gene_name(uniprot_file_path)
     add_gene_names_to_ppi()
-    proteomics_trascriptomics_ppi_prep()
-    time_stamp_list = [".SARS_CoV2@6h_vs_mock@6h", ".SARS_CoV2@12h_vs_mock@12h", ".SARS_CoV2@24h_vs_mock@24h"]
-    proteomics_trascriptomics_features_prep(time_stamp_list, time_stamp_list, True)
-    
-    do_pca_positives_vs_negatives(host_factor_data_path, strong_host_factors)
+    if input_data_type == "transcriptomics-proteomics":
+        proteomics_trascriptomics_ppi_prep()
+        time_stamp_list = [".SARS_CoV2@6h_vs_mock@6h", ".SARS_CoV2@12h_vs_mock@12h", ".SARS_CoV2@24h_vs_mock@24h"]
+        proteomics_trascriptomics_features_prep(time_stamp_list, time_stamp_list, True)
+
+        network, features, node_names, feat_names = create_adjacency_matrix_and_feature_matrix("df_string_transcriptomics_proteomics.zip", "feature_dict_absolute_value.json")
+
+        y_train, train_mask, y_test, test_mask, y_val, val_mask = train_test_val_split(host_factor_data_path, strong_host_factors)
+        #do_pca_positives_vs_negatives(host_factor_data_path, strong_host_factors)
