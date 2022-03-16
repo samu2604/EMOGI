@@ -7,8 +7,24 @@ import json
 from tqdm import tqdm
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
-import random   
+import random  
+import h5py 
 
+def create_hdf5_container(network, features, node_names, feat_names, y_train, train_mask, y_test, test_mask, y_val, val_mask, container_name :str):
+    f = h5py.File(container_name + '.h5', 'w')
+    string_dt = h5py.special_dtype(vlen=str)
+    f.create_dataset('network', data=network, shape=network.shape)
+    f.create_dataset('features', data=features, shape=features.shape)
+    f.create_dataset('gene_names', data=node_names, dtype=string_dt)
+    f.create_dataset('y_train', data=y_train, shape=y_train.shape)
+    f.create_dataset('y_val', data=y_val, shape=y_val.shape)
+    f.create_dataset('y_test', data=y_test, shape=y_test.shape)
+    f.create_dataset('mask_train', data=train_mask, shape=train_mask.shape)
+    f.create_dataset('mask_val', data=val_mask, shape=val_mask.shape)
+    f.create_dataset('mask_test', data=test_mask, shape=test_mask.shape)
+    f.create_dataset('feature_names', data=feat_names, dtype=string_dt)
+    f.create_dataset('features_raw', data=features, shape=features.shape)
+    f.close()
 
 def create_adjacency_matrix_and_feature_matrix(ppi_file_path :str, feature_file_path :str):
     df_string_ppi = pd.read_csv(ppi_file_path)
@@ -40,10 +56,10 @@ def create_adjacency_matrix_and_feature_matrix(ppi_file_path :str, feature_file_
         for gene_index, gene in enumerate(randomized_gene_list):
             features[gene_index, 0] = features_dict[gene][2] # transcriptomics at 24h
             features[gene_index, 1] = features_dict[gene][5] # proteomics at 24h  
-        np.savetxt("features.csv", network, delimiter = ",")                 
+        np.savetxt("features.csv", features, delimiter = ",")                 
     else:
         network =  np.loadtxt(open("network.csv"), delimiter = ",") 
-        features = np.loadtxt(open("features.csv"), delimiter = ",")   
+        features = np.loadtxt(open("features.csv"), delimiter = ",")  
         randomized_gene_list = np.genfromtxt("randomized_gene_list.txt", dtype=str)    
 
     node_names = []
@@ -455,4 +471,6 @@ if __name__ == "__main__":
         network, features, node_names, feat_names = create_adjacency_matrix_and_feature_matrix("df_string_transcriptomics_proteomics.zip", "feature_dict_absolute_value.json")
 
         y_train, train_mask, y_test, test_mask, y_val, val_mask = train_test_val_split(host_factor_data_path, strong_host_factors)
+        
+        create_hdf5_container(network, features, node_names, feat_names, y_train, train_mask, y_test, test_mask, y_val, val_mask, "transcriptomics_proteomics")
         #do_pca_positives_vs_negatives(host_factor_data_path, strong_host_factors)
