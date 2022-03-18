@@ -9,6 +9,7 @@ from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import random  
 import h5py 
+import pathlib
 
 def create_hdf5_container(network, features, node_names, feat_names, y_train, train_mask, y_test, test_mask, y_val, val_mask, container_name :str):
     f = h5py.File(container_name + '.h5', 'w')
@@ -32,35 +33,41 @@ def create_adjacency_matrix_and_feature_matrix(ppi_file_path :str, feature_file_
     features_dict = json.load(json_file)    
     gene_list = [gene_name for gene_name in features_dict.keys()]
     list_of_hub_genes = df_string_ppi["gene_name_1"].unique()
+    max_interaction_strength = max(df_string_ppi["experimental"].values)
     
-    if not os.path.isfile("network.csv") and not os.path.isfile("features.csv") and not os.path.isfile("randomized_gene_list.txt"):
+    new_dir_name = 'input_data_proteome_transcriptome'
+    new_dir = pathlib.Path('/home/samuele/EMOGI/artivir_data/data_preprocessing_pipeline', new_dir_name)
+    new_dir.mkdir(parents=True, exist_ok=True)
+    
+    if not os.path.isfile(new_dir_name + "/network.csv") and not os.path.isfile(new_dir_name + "/features.csv") and not os.path.isfile(new_dir_name + "/randomized_gene_list.txt"):
         print("Created randomized gene list")
         gene_indeces_list =  np.random.permutation(np.arange(0, len(gene_list)))
         randomized_gene_list = [gene_list[index] for index in gene_indeces_list]   
-        np.savetxt("randomized_gene_list.txt", randomized_gene_list, delimiter = " ", fmt="%s")
+        np.savetxt(new_dir / "randomized_gene_list.txt", randomized_gene_list, delimiter = " ", fmt="%s")
           
         network = np.zeros([len(randomized_gene_list) ,len(randomized_gene_list)])
         print("Adjacency matrix creation")
         for gene in list_of_hub_genes:
             genes_connected_to_gene = df_string_ppi[df_string_ppi["gene_name_1"] == gene]["gene_name_2"].values
+            connected_to_gene_interaction_strength_genes = df_string_ppi[df_string_ppi["gene_name_1"] == gene]["experimental"].values
             index_gene = randomized_gene_list.index(gene)
-            for gene_connected in genes_connected_to_gene:          
+            for gene_connected, gene_connected_interaction_strength in zip(genes_connected_to_gene, connected_to_gene_interaction_strength_genes):          
                 index_gene_connected_to_gene = randomized_gene_list.index(gene_connected)
                 if network[index_gene, index_gene_connected_to_gene] == 0 and index_gene != index_gene_connected_to_gene: 
-                    network[index_gene, index_gene_connected_to_gene] = 1 # here we can use a value proportional to the interaction strength 
-                    network[index_gene_connected_to_gene, index_gene] = 1 # here we can use a value proportional to the interaction strength
-        np.savetxt("network.csv", network, delimiter = ",") 
+                    network[index_gene, index_gene_connected_to_gene] = gene_connected_interaction_strength/max_interaction_strength # here we can use a value proportional to the interaction strength 
+                    network[index_gene_connected_to_gene, index_gene] = gene_connected_interaction_strength/max_interaction_strength # here we can use a value proportional to the interaction strength
+        np.savetxt(new_dir /"network.csv", network, delimiter = ",") 
 
         features = np.zeros([len(randomized_gene_list) ,2])
         print("Feature matrix creation")
         for gene_index, gene in enumerate(randomized_gene_list):
             features[gene_index, 0] = features_dict[gene][2] # transcriptomics at 24h
             features[gene_index, 1] = features_dict[gene][5] # proteomics at 24h  
-        np.savetxt("features.csv", features, delimiter = ",")                 
+        np.savetxt(new_dir / "features.csv", features, delimiter = ",")                 
     else:
-        network =  np.loadtxt(open("network.csv"), delimiter = ",") 
-        features = np.loadtxt(open("features.csv"), delimiter = ",")  
-        randomized_gene_list = np.genfromtxt("randomized_gene_list.txt", dtype=str)    
+        network =  np.loadtxt(open(new_dir_name + "/network.csv"), delimiter = ",") 
+        features = np.loadtxt(open(new_dir_name + "/features.csv"), delimiter = ",")  
+        randomized_gene_list = np.genfromtxt(new_dir_name + "/randomized_gene_list.txt", dtype=str)    
 
     node_names = []
     for gene_name in randomized_gene_list:
@@ -144,7 +151,7 @@ def train_test_val_sampler(list_to_sample, number_train_samples, number_test_sam
         
     
 def train_test_val_split(host_factor_data_path, strong_host_factors):
-    node_gene_list = np.genfromtxt("randomized_gene_list.txt", dtype=str)
+    node_gene_list = np.genfromtxt("input_data_proteome_transcriptome/randomized_gene_list.txt", dtype=str)
     nodes_number = len(node_gene_list)
     y_train = np.zeros([nodes_number, 1], float)
     y_test = np.zeros([nodes_number, 1], float)
@@ -472,5 +479,5 @@ if __name__ == "__main__":
 
         y_train, train_mask, y_test, test_mask, y_val, val_mask = train_test_val_split(host_factor_data_path, strong_host_factors)
         
-        create_hdf5_container(network, features, node_names, feat_names, y_train, train_mask, y_test, test_mask, y_val, val_mask, "transcriptomics_proteomics")
+        create_hdf5_container(network, features, node_names, feat_names, y_train, train_mask, y_test, test_mask, y_val, val_mask, "transcriptomics_proteomics_weighted_adjacency")
         #do_pca_positives_vs_negatives(host_factor_data_path, strong_host_factors)
