@@ -109,6 +109,24 @@ def single_cv_run(session, support, num_supports, features, y_train, y_test, tra
     # predict all nodes (result from algorithm)
     predictions = predict(session, model, features, support, y_test,
                           test_mask, placeholders)
+    positive_indices_all_data_set = np.unique(np.concatenate((np.where(y_val > 0)[0], np.where(y_train > 0)[0], np.where(y_test > 0)[0]), axis = None))
+    
+    all_dataset_indices = np.concatenate((np.where(train_mask > 0)[0], np.where(test_mask > 0)[0], np.where(val_mask > 0)[0]), axis = None)
+
+    predicted_positive_indices = np.where(predictions > 0.5)[0]
+    pos_counter = 0
+    for index in predicted_positive_indices:
+        if index in positive_indices_all_data_set:
+            pos_counter += 1 
+    TPR = pos_counter/len(positive_indices_all_data_set)  
+    print(f"TPR: {TPR}")
+    predicted_negative_indices = np.where(predictions <= 0.5)[0]
+    neg_counter = 0
+    for index in predicted_negative_indices:
+        if index in all_dataset_indices and index not in positive_indices_all_data_set:
+            neg_counter += 1 
+    TNR = neg_counter/(len(all_dataset_indices) - len(positive_indices_all_data_set))
+    print(f"TNR: {TNR}")      
     gcnIO.save_predictions(model_dir, node_names, predictions)
     gcnIO.write_train_test_sets(model_dir, y_train, y_test, train_mask, test_mask)
     return test_performance

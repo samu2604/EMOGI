@@ -10,8 +10,45 @@ import matplotlib.pyplot as plt
 import random  
 import h5py 
 import pathlib
+from datetime import datetime
+
+def create_trivial_features(features, y_train, train_mask, y_test, test_mask, y_val, val_mask, hdf5_file_name):
+    hdf5_file_name += "_trivial_features"
+    
+    positive_labelled_indices = np.unique(np.concatenate((np.where(y_val > 0.1)[0], np.where(y_train > 0.1)[0], np.where(y_test > 0.1)[0]), axis = None))
+    
+    all_dataset_indices = np.unique(np.concatenate((np.where(train_mask > 0)[0], np.where(test_mask > 0)[0], np.where(val_mask > 0)[0]), axis = None))  
+    
+    remaining_indices = []
+    for index in np.arange(0, len(features)):
+        if index not in all_dataset_indices:
+            remaining_indices.append(index)  
+                    
+    remaining_indices = np.random.permutation(np.array(remaining_indices)) 
+    remaining_positive_indices = remaining_indices[: int(len(remaining_indices)/4)]
+    
+    _, n_features = np.shape(features)
+        
+    for index in positive_labelled_indices:
+        for feature in np.arange(0, n_features):
+            features[index][feature] = np.random.normal(loc=1.0, scale=0.15, size=None)
+    
+    for index in remaining_positive_indices:
+        for feature in np.arange(0, n_features):
+            features[index][feature] = np.random.normal(loc=1.0, scale=0.15, size=None)        
+            
+    for index in np.arange(0, len(features)):
+        if index not in positive_labelled_indices and index not in remaining_positive_indices:
+            for feature in np.arange(0, n_features):
+                features[index][feature] = np.random.normal(loc=-1.0, scale=0.15, size=None)           
+        
+    return features, hdf5_file_name
 
 def create_hdf5_container(network, features, node_names, feat_names, y_train, train_mask, y_test, test_mask, y_val, val_mask, container_name :str):
+    
+    date_time_obj = datetime.now()
+    container_name = container_name + "_" + str(date_time_obj.year) + "_" + str(date_time_obj.month) + "_" + str(date_time_obj.day) + "_" + str(date_time_obj.hour) + "_" + str(date_time_obj.minute) 
+    
     f = h5py.File(container_name + '.h5', 'w')
     string_dt = h5py.special_dtype(vlen=str)
     f.create_dataset('network', data=network, shape=network.shape)
@@ -54,8 +91,8 @@ def create_adjacency_matrix_and_feature_matrix(ppi_file_path :str, feature_file_
             for gene_connected, gene_connected_interaction_strength in zip(genes_connected_to_gene, connected_to_gene_interaction_strength_genes):          
                 index_gene_connected_to_gene = randomized_gene_list.index(gene_connected)
                 if network[index_gene, index_gene_connected_to_gene] == 0 and index_gene != index_gene_connected_to_gene: 
-                    network[index_gene, index_gene_connected_to_gene] = gene_connected_interaction_strength/max_interaction_strength # here we can use a value proportional to the interaction strength 
-                    network[index_gene_connected_to_gene, index_gene] = gene_connected_interaction_strength/max_interaction_strength # here we can use a value proportional to the interaction strength
+                    network[index_gene, index_gene_connected_to_gene] = 1.0#gene_connected_interaction_strength/max_interaction_strength # here we can use a value proportional to the interaction strength 
+                    network[index_gene_connected_to_gene, index_gene] = 1.0#gene_connected_interaction_strength/max_interaction_strength # here we can use a value proportional to the interaction strength
         np.savetxt(new_dir /"network.csv", network, delimiter = ",") 
 
         features = np.zeros([len(randomized_gene_list) ,2])
@@ -150,7 +187,7 @@ def train_test_val_sampler(list_to_sample, number_train_samples, number_test_sam
     return training_samples, test_samples, validation_samples
         
     
-def train_test_val_split(host_factor_data_path, strong_host_factors):
+def train_test_val_split(host_factor_data_path, strong_host_factors :str, host_factors_shared_from_stukalov_and_others :str):
     node_gene_list = np.genfromtxt("input_data_proteome_transcriptome/randomized_gene_list.txt", dtype=str)
     nodes_number = len(node_gene_list)
     y_train = np.zeros([nodes_number, 1], float)
@@ -161,11 +198,13 @@ def train_test_val_split(host_factor_data_path, strong_host_factors):
     val_mask = np.zeros(nodes_number, float)
     
     # Read positive labels
-    positive_host_factors_file = open(strong_host_factors, "r")
-    positive_host_factors = []
-    for line in positive_host_factors_file:
-        gene = line.strip()
-        positive_host_factors.append(gene)
+    positive_host_factors = np.genfromtxt(strong_host_factors, dtype=str)    
+        
+    # Read shared host factors from stukalov  
+    host_factors_shared_from_stukalov_and_others = np.genfromtxt(host_factors_shared_from_stukalov_and_others, dtype=str)  
+    
+    # join positives
+    positive_host_factors = np.unique(np.concatenate((positive_host_factors, host_factors_shared_from_stukalov_and_others), axis = None))
     
     host_factors = pd.ExcelFile(host_factor_data_path)
     host_factors_dfs = {sheet_name: host_factors.parse(sheet_name) for sheet_name in host_factors.sheet_names}
@@ -194,20 +233,13 @@ def train_test_val_split(host_factor_data_path, strong_host_factors):
     fill_labels_and_mask(training_positive_samples, training_negative_samples ,node_gene_list, y_train, train_mask)
     fill_labels_and_mask(test_positive_samples, test_negative_samples ,node_gene_list, y_test, test_mask)
     fill_labels_and_mask(validation_positive_samples, validation_negative_samples ,node_gene_list, y_val, val_mask)  
-    
-    # print(f" y_train {sum(y_train)} {len(training_positive_samples)}")
-    # print(f" y_test {sum(y_test)} {len(test_positive_samples)}")
-    # print(f" y_val {sum(y_val)} {len(validation_positive_samples)}")
-    # print(f" train_mask {sum(train_mask)} {len(training_positive_samples) + len(training_negative_samples)}")
-    # print(f" test_mask {sum(test_mask)} {len(test_positive_samples) + len(test_negative_samples)}")
-    # print(f" val_mask {sum(val_mask)} {len(validation_positive_samples) + len(validation_negative_samples)}")
         
     return y_train, train_mask, y_test, test_mask, y_val, val_mask
 
 def fill_labels_and_mask(positive_samples, negative_samples ,node_gene_list, y, mask):
     for gene in positive_samples:
         y[np.where(node_gene_list == gene), 0] = 1.0
-        mask[np.where(node_gene_list == gene)] = 1.0 #np.where(np.array(lista) == "KIF23")[0][0]
+        mask[np.where(node_gene_list == gene)] = 1.0 
     for gene in  negative_samples:
         mask[np.where(node_gene_list == gene)] = 1.0
 
@@ -217,9 +249,7 @@ def do_pca_positives_vs_negatives(host_factor_data_path, strong_host_factors):
     for line in positive_host_factors_file:
         gene = line.strip()
         positive_host_factors.append(gene)    
-    
-    #print(positive_host_factors)    
-        
+            
     host_factors = pd.ExcelFile(host_factor_data_path)
     host_factors_dfs = {sheet_name: host_factors.parse(sheet_name) for sheet_name in host_factors.sheet_names}
     potential_host_factors_to_remove = host_factors_dfs["host_factors"]["Gene name"].unique()
@@ -442,18 +472,29 @@ def parse_args():
                     default="../9606.protein.physical.links.detailed.v11.5.txt",
                     type=str
                     )    
-    parser.add_argument('--uniprot_file_path', help='Uniprot download file path',
-                    default="../HUMAN_9606_idmapping.dat",
+    parser.add_argument('--uniprot_file_path', help = 'Uniprot download file path',
+                    default = "../HUMAN_9606_idmapping.dat",
                     type=str
                     )   
-    parser.add_argument('--strong_host_factors', help='Host factors to consider as positive labels',
-                    default="../strong_host_factors.txt",
+    parser.add_argument('--strong_host_factors', help = 'Host factors to consider as positive labels',
+                    default = "../strong_host_factors.txt",
                     type=str
                     )  
-    parser.add_argument( "input_data_type", type=str, choices=["transcriptomics", "proteomics", "transcriptomics-proteomics"],
+    parser.add_argument('--host_factors_shared_from_stukalov_and_others', help = 'Host factors shared between stukalov and other indipendent studies to consider as positive labels',
+                    default = "../host_factors_stukalov_plus_two_more_studies.txt",
+                    type=str
+                    )
+    parser.add_argument( "input_data_type", type = str, choices=["transcriptomics", "proteomics", "transcriptomics-proteomics"],
                     help="Choose which data you want to use to create the input dataset for EMOGI")
     
+    parser.add_argument('--is_trivial_features', action='store_true', default = False, help = "Use trivial features to test the negative vs. positives classifier")
+
+    parser.add_argument('--hdf5_file_name', type = str, help = "Specify hdf5 file name")    
+    
     args = parser.parse_args()
+    
+    if args.hdf5_file_name is None:
+        args.hdf5_file_name = args.input_data_type
     return args                   
 
 
@@ -465,6 +506,9 @@ if __name__ == "__main__":
     uniprot_file_path = args.uniprot_file_path
     strong_host_factors = args.strong_host_factors
     input_data_type = args.input_data_type
+    host_factors_shared_from_stukalov_and_others = args.host_factors_shared_from_stukalov_and_others
+    is_trivial_features = args.is_trivial_features
+    hdf5_file_name = args.hdf5_file_name
     
     data_preprocessing(input_data_path)
     import_and_filter_string_ppi(path_to_string)
@@ -477,7 +521,10 @@ if __name__ == "__main__":
 
         network, features, node_names, feat_names = create_adjacency_matrix_and_feature_matrix("df_string_transcriptomics_proteomics.zip", "feature_dict_absolute_value.json")
 
-        y_train, train_mask, y_test, test_mask, y_val, val_mask = train_test_val_split(host_factor_data_path, strong_host_factors)
+        y_train, train_mask, y_test, test_mask, y_val, val_mask = train_test_val_split(host_factor_data_path, strong_host_factors, host_factors_shared_from_stukalov_and_others)
         
-        create_hdf5_container(network, features, node_names, feat_names, y_train, train_mask, y_test, test_mask, y_val, val_mask, "transcriptomics_proteomics_weighted_adjacency")
+        if is_trivial_features:
+            features, hdf5_file_name = create_trivial_features(features, y_train, train_mask, y_test, test_mask, y_val, val_mask, hdf5_file_name)
+        
+        create_hdf5_container(network, features, node_names, feat_names, y_train, train_mask, y_test, test_mask, y_val, val_mask, hdf5_file_name)
         #do_pca_positives_vs_negatives(host_factor_data_path, strong_host_factors)
