@@ -40,7 +40,7 @@ def create_trivial_features(features, y_train, train_mask, y_test, test_mask, y_
     for index in np.arange(0, len(features)):
         if index not in positive_labelled_indices and index not in remaining_positive_indices:
             for feature in np.arange(0, n_features):
-                features[index][feature] = np.random.normal(loc=-1.0, scale=0.15, size=None)           
+                features[index][feature] = np.random.normal(loc=1.0, scale=0.15, size=None)           
         
     return features, hdf5_file_name
 
@@ -114,62 +114,7 @@ def create_adjacency_matrix_and_feature_matrix(ppi_file_path :str, feature_file_
     feat_names = np.array(["transcriptomics_24h", "proteomics_24"], dtype=object)
                      
     return network, features, node_names, feat_names
-    
-def compute_pca_and_plot(positive_features, negative_features):
-    # positive_features = [[features[i] for i in [2, 5]] for features in positive_features]
-    # negative_features = [[features[i] for i in [2, 5]] for features in negative_features]
-    # pca = PCA(n_components=2)
-    # host_factors_principal_components = pca.fit_transform(positive_features)
-    # df_pca_host_factors = pd.DataFrame(data = host_factors_principal_components
-    #              , columns = ['principal component 1', 'principal component 2'])    
-    
-    # negative_genes_principal_components = pca.fit_transform(negative_features)
-    # df_pca_negative_genes = pd.DataFrame(data = negative_genes_principal_components
-    #              , columns = ['principal component 1', 'principal component 2'])    
-    
-    # fig = plt.figure(figsize = (16,16))
-    # ax = fig.add_subplot(1,1,1) 
-    # ax.set_xlabel('Principal Component 1', fontsize = 15)
-    # ax.set_ylabel('Principal Component 2', fontsize = 15)
-    # ax.set_title('2 Component PCA', fontsize = 20)
 
-    # ax.scatter(df_pca_negative_genes['principal component 1']
-    #                , df_pca_negative_genes['principal component 2']
-    #                , c = "b"
-    #                , alpha = 0.3
-    #                , s = 10)
-    # ax.scatter(df_pca_host_factors['principal component 1']
-    #                , df_pca_host_factors['principal component 2']
-    #                , c = "r"
-    #                , alpha = 0.9
-    #                , s = 20)
-    # ax.set_xlim([-6, 6])
-    # ax.set_ylim([-6, 6])
-    # ax.legend(["set of the potential negatives", "positive set samples"], fontsize = 12)
-    # ax.grid()
-    
-    positive_features = [features[1] for features in positive_features]
-    negative_features = [features[1] for features in negative_features]
-    
-    print(f" mean value positive_features { mean(positive_features)} std positive_features {stdev(positive_features)}")
-    print(f" mean value negative_features { mean(negative_features)} std negative_features {stdev(negative_features)}")
-    
-    bins = np.linspace(-1, 1, 60)
-
-    fig = plt.gcf()
-    fig.set_size_inches(22, 12)
-
-    plt.title("Transcriptomics at 12H")
-    plt.hist(positive_features, bins, alpha=0.5, density=True, label=f'positive_features -> mean value; { round(mean(positive_features),3)}, std:  {round(stdev(positive_features), 3)}')
-    plt.hist(negative_features, bins, alpha=0.5, density=True, label=f'negative_features -> mean value; { round(mean(negative_features),3)}, std:  {round(stdev(negative_features), 3)}')
-    plt.legend(loc='upper right')
-    plt.ylabel('Counts')
-    plt.xlabel('Feature value')
-    plt.show()
-
-    fig.savefig('Transcriptomics_at_12H.png', dpi=100)
-    
-    plt.show()
     
 def sample_from_list_and_return_remaining_list(list_to_sample, number_elements_to_sample):
     if number_elements_to_sample > len(list_to_sample):
@@ -241,33 +186,7 @@ def fill_labels_and_mask(positive_samples, negative_samples ,node_gene_list, y, 
         y[np.where(node_gene_list == gene), 0] = 1.0
         mask[np.where(node_gene_list == gene)] = 1.0 
     for gene in  negative_samples:
-        mask[np.where(node_gene_list == gene)] = 1.0
-
-def do_pca_positives_vs_negatives(host_factor_data_path, strong_host_factors):
-    positive_host_factors_file = open(strong_host_factors, "r")
-    positive_host_factors = []
-    for line in positive_host_factors_file:
-        gene = line.strip()
-        positive_host_factors.append(gene)    
-            
-    host_factors = pd.ExcelFile(host_factor_data_path)
-    host_factors_dfs = {sheet_name: host_factors.parse(sheet_name) for sheet_name in host_factors.sheet_names}
-    potential_host_factors_to_remove = host_factors_dfs["host_factors"]["Gene name"].unique()
-    
-    json_file = open("feature_dict_absolute_value.json", "r")
-    #json_file = open("feature_dict_signed_value.json", "r")
-    features_dict = json.load(json_file)
-    nodes_genes = list(features_dict.keys())
-    negatives_feature_vectors = []
-    positives_feature_vectors = []
-    
-    for gene in tqdm(nodes_genes):
-        if gene in positive_host_factors:
-            positives_feature_vectors.append(features_dict[gene])
-        if gene not in positive_host_factors and gene not in potential_host_factors_to_remove:
-            negatives_feature_vectors.append(features_dict[gene])  
-    negatives_feature_vectors = random.sample(negatives_feature_vectors, 4*len(positives_feature_vectors))        
-    compute_pca_and_plot(positives_feature_vectors, negatives_feature_vectors)
+        mask[np.where(node_gene_list == gene)] = 1.0 
     
 
 def feature_fold_change_pvalue_combination(log2fc, p_val, is_absolute_val):
@@ -519,12 +438,11 @@ if __name__ == "__main__":
         time_stamp_list = [".SARS_CoV2@6h_vs_mock@6h", ".SARS_CoV2@12h_vs_mock@12h", ".SARS_CoV2@24h_vs_mock@24h"]
         proteomics_trascriptomics_features_prep(time_stamp_list, time_stamp_list, True)
 
-        network, features, node_names, feat_names = create_adjacency_matrix_and_feature_matrix("df_string_transcriptomics_proteomics.zip", "feature_dict_absolute_value.json")
+        network, features, node_names, feat_names = create_adjacency_matrix_and_feature_matrix("df_string_transcriptomics_proteomics.zip", "feature_dict_signed_value.json")
 
         y_train, train_mask, y_test, test_mask, y_val, val_mask = train_test_val_split(host_factor_data_path, strong_host_factors, host_factors_shared_from_stukalov_and_others)
         
         if is_trivial_features:
-            features, hdf5_file_name = create_trivial_features(features, y_train, train_mask, y_test, test_mask, y_val, val_mask, hdf5_file_name)
+           features, hdf5_file_name = create_trivial_features(features, y_train, train_mask, y_test, test_mask, y_val, val_mask, hdf5_file_name)
         
         create_hdf5_container(network, features, node_names, feat_names, y_train, train_mask, y_test, test_mask, y_val, val_mask, hdf5_file_name)
-        #do_pca_positives_vs_negatives(host_factor_data_path, strong_host_factors)

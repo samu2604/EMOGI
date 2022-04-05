@@ -118,11 +118,12 @@ def load_hyper_params(model_dir):
 def create_model_dir():
     root_dir = '../data/GCN/training'
     if not os.path.isdir(root_dir):  # in case training root doesn't exist
-        os.mkdir(root_dir)
+        os.makedirs(root_dir)
         print("Created Training Subdir")
     date_string = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-    os.mkdir(os.path.join(root_dir, date_string))
-    model_path = os.path.join(root_dir, date_string)
+    model_path = os.path.join(root_dir, date_string) 
+    if not os.path.isdir(model_path):
+        os.mkdir(model_path)
     return model_path
 
 def save_predictions(output_dir, node_names, predictions):

@@ -1,0 +1,7 @@
+
+create_args_dict.hidden_dims = [50]
+create_args_dict.loss_mul = 30.0
+create_args_dict.data = "/home/samuele/EMOGI/example/toy_example.h5"
+create_args_dict.cv_runs = 3
+create_args_dict.epochs = 100
+

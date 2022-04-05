@@ -13,58 +13,17 @@ import scipy.sparse as sp
 import numpy as np
 from train_EMOGI import *
 from emogi import EMOGI
+import gin
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train EMOGI with cross-validation and save model to file')
-    parser.add_argument('-e', '--epochs', help='Number of Epochs',
-                        dest='epochs',
-                        default=7000,
-                        type=int
-                        )
-    parser.add_argument('-lr', '--learningrate', help='Learning Rate',
-                        dest='lr',
-                        default=.001,
-                        type=float
-                        )
-    parser.add_argument('-s', '--support', help='Neighborhood Size in Convolutions',
-                        dest='support',
-                        default=1,
-                        type=int
-                        )
-    parser.add_argument('-hd', '--hidden_dims',
-                        help='Hidden Dimensions (number of filters per layer. Also determines the number of hidden layers.',
-                        nargs='+',
-                        dest='hidden_dims',
-                        default=[50, 100])
-    parser.add_argument('-lm', '--loss_mul',
-                        help='Number of times, false negatives are weighted higher than false positives',
-                        dest='loss_mul',
-                        default=30,
-                        type=float
-                        )
-    parser.add_argument('-wd', '--weight_decay', help='Weight Decay',
-                        dest='decay',
-                        default=5e-2,
-                        type=float
-                        )
-    parser.add_argument('-do', '--dropout', help='Dropout Percentage',
-                        dest='dropout',
-                        default=.5,
-                        type=float
-                        )
-    parser.add_argument('-d', '--data', help='Path to HDF5 container with data',
-                        dest='data',
+    parser.add_argument('--config', help='Path to config.gin file',
                         type=str,
                         required=True
                         )
-    parser.add_argument('-cv', '--cv_runs', help='Number of cross validation runs',
-                    dest='cv_runs',
-                    default=10,
-                    type=int
-                    )
     args = parser.parse_args()
     return args
 
@@ -72,7 +31,7 @@ def parse_args():
 
 def single_cv_run(session, support, num_supports, features, y_train, y_test, train_mask, test_mask,
                   node_names, feature_names, args, model_dir):
-    hidden_dims = [int(x) for x in args['hidden_dims']]
+    hidden_dims = [ x for x in args['hidden_dims']]
     placeholders = {
         'support': [tf.sparse_placeholder(tf.float32, name='support_{}'.format(i)) for i in range(num_supports)],
         'features': tf.placeholder(tf.float32, shape=features.shape, name='Features'),
@@ -171,23 +130,39 @@ def run_all_cvs(adj, features, y_train, y_val, y_test, train_mask, val_mask, tes
     gcnIO.write_hyper_params(args, args['data'], os.path.join(output_dir, 'hyper_params.txt'))
     return performance_measures
 
+@gin.configurable
+def create_args_dict(hidden_dims :list, loss_mul :float, data :str, cv_runs: int, epochs: int):
+    args_dict = {'lr': 0.001, 'support': 1, 'decay': 0.05, 'dropout': 0.5}
+    args_dict.update({'epochs': epochs})
+    args_dict.update({'hidden_dims' : hidden_dims})
+    args_dict.update({'loss_mul' : loss_mul})
+    args_dict.update({'data': data})
+    args_dict.update({'cv_runs': cv_runs})
+    return args_dict
 
 if __name__ == "__main__":
+    # load config file
     args = parse_args()
-
-    if not args.data.endswith('.h5'):
-        print("Data is not a hdf5 container. Exit now.")
-        sys.exit(-1)
-
+    config_file_path = args.config
+    gin.parse_config_file(config_file_path)
     output_dir = gcnIO.create_model_dir()
-
+    args_dict = create_args_dict()
+    
     # load data and preprocess it
-    input_data_path = args.data
+    input_data_path = args_dict['data']
     data = gcnIO.load_hdf_data(input_data_path, feature_name='features')
     adj, features, y_train, y_val, y_test, train_mask, val_mask, test_mask, node_names, feature_names = data
     print("Read data from: {}".format(input_data_path))
     
-    args_dict = vars(args)
-    print (args_dict)
-    run_all_cvs(adj, features, y_train, y_val, y_test, train_mask, val_mask, test_mask,
+    print (f"args_dict: {args_dict}")
+    performance_measures = run_all_cvs(adj, features, y_train, y_val, y_test, train_mask, val_mask, test_mask,
                 node_names, feature_names, args_dict, output_dir)
+
+    avg_auroc = 0
+    for item in performance_measures:
+        avg_auroc += item[3]
+    avg_auroc /= args_dict['cv_runs']    
+    print(f"performance_measures: {performance_measures} auroc: {avg_auroc}")
+    config_dir, _ = os.path.split(config_file_path)
+    with open(os.path.join(config_dir, 'result'), 'w') as f:
+        f.write(f'{-avg_auroc}\n')    
