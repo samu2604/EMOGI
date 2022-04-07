@@ -40,7 +40,7 @@ def create_trivial_features(features, y_train, train_mask, y_test, test_mask, y_
     for index in np.arange(0, len(features)):
         if index not in positive_labelled_indices and index not in remaining_positive_indices:
             for feature in np.arange(0, n_features):
-                features[index][feature] = np.random.normal(loc=1.0, scale=0.15, size=None)           
+                features[index][feature] = np.random.normal(loc=-1.0, scale=0.15, size=None)           
         
     return features, hdf5_file_name
 

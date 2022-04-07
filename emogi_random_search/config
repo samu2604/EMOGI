@@ -1,0 +1,6 @@
+
+create_args_dict.hidden_dims = {{ [[20], [30], [25], [20], [15] ] | random }}
+create_args_dict.loss_mul = {{ [52, 53, 54, 55, 56, 57, 58] | random }}
+create_args_dict.data = "../EMOGI/train_EMOGI_cv.py"
+create_args_dict.cv_runs = 4
+create_args_dict.epochs = {{ [200, 150, 250] | random }}
