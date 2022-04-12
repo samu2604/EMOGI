@@ -120,10 +120,10 @@ def create_model_dir():
     if not os.path.isdir(root_dir):  # in case training root doesn't exist
         os.makedirs(root_dir)
         print("Created Training Subdir")
-    date_string = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    date_string = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
     model_path = os.path.join(root_dir, date_string) 
     if not os.path.isdir(model_path):
-        os.mkdir(model_path)
+        os.makedirs(model_path)
     return model_path
 
 def save_predictions(output_dir, node_names, predictions):
