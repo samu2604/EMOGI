@@ -1,0 +1,5 @@
+create_args_dict.hidden_dims = [550, 550, 550]
+create_args_dict.loss_mul = 63.5
+create_args_dict.data = "/storage/groups/crna01/datasets/arti_vir/transcriptomics_proteomics_extended_positives_signed_weighted_connections_2022_4_12_23_14.h5"
+create_args_dict.cv_runs = 5
+create_args_dict.epochs = 700

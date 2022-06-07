@@ -159,10 +159,14 @@ if __name__ == "__main__":
                 node_names, feature_names, args_dict, output_dir)
 
     avg_auroc = 0
+    avg_auprc = 0
     for item in performance_measures:
+        avg_auprc += item[2]
         avg_auroc += item[3]
     avg_auroc /= args_dict['cv_runs']    
-    print(f"performance_measures: {performance_measures} auroc: {avg_auroc}")
+    avg_auprc /= args_dict['cv_runs']
+    print(f"performance_measures: {performance_measures} auroc: {avg_auroc}, auprc: {avg_auprc}")
+
     config_dir, _ = os.path.split(config_file_path)
     with open(os.path.join(config_dir, 'result'), 'w') as f:
         f.write(f'{-avg_auroc}\n')    

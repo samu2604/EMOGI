@@ -116,7 +116,7 @@ def load_hyper_params(model_dir):
 
 
 def create_model_dir():
-    root_dir = '../data/GCN/training'
+    root_dir = '/storage/groups/crna01/datasets/arti_vir/data/GCN/training'
     if not os.path.isdir(root_dir):  # in case training root doesn't exist
         os.makedirs(root_dir)
         print("Created Training Subdir")

@@ -1,0 +1,112 @@
+OMP: Info #155: KMP_AFFINITY: Initial OS proc set respected: 0,2,14,36,38,40,42,44,48,50,62,84,86,88,90,92
+OMP: Info #217: KMP_AFFINITY: decoding x2APIC ids.
+OMP: Info #157: KMP_AFFINITY: 16 available OS procs
+OMP: Info #158: KMP_AFFINITY: Uniform topology
+OMP: Info #288: KMP_AFFINITY: topology layer "LL cache" is equivalent to "socket".
+OMP: Info #288: KMP_AFFINITY: topology layer "L3 cache" is equivalent to "socket".
+OMP: Info #288: KMP_AFFINITY: topology layer "L2 cache" is equivalent to "core".
+OMP: Info #288: KMP_AFFINITY: topology layer "L1 cache" is equivalent to "core".
+OMP: Info #192: KMP_AFFINITY: 1 socket x 8 cores/socket x 2 threads/core (8 total cores)
+OMP: Info #219: KMP_AFFINITY: OS proc to physical thread map:
+OMP: Info #172: KMP_AFFINITY: OS proc 0 maps to socket 0 core 0 thread 0 
+OMP: Info #172: KMP_AFFINITY: OS proc 48 maps to socket 0 core 0 thread 1 
+OMP: Info #172: KMP_AFFINITY: OS proc 2 maps to socket 0 core 6 thread 0 
+OMP: Info #172: KMP_AFFINITY: OS proc 50 maps to socket 0 core 6 thread 1 
+OMP: Info #172: KMP_AFFINITY: OS proc 14 maps to socket 0 core 13 thread 0 
+OMP: Info #172: KMP_AFFINITY: OS proc 62 maps to socket 0 core 13 thread 1 
+OMP: Info #172: KMP_AFFINITY: OS proc 36 maps to socket 0 core 24 thread 0 
+OMP: Info #172: KMP_AFFINITY: OS proc 84 maps to socket 0 core 24 thread 1 
+OMP: Info #172: KMP_AFFINITY: OS proc 40 maps to socket 0 core 25 thread 0 
+OMP: Info #172: KMP_AFFINITY: OS proc 88 maps to socket 0 core 25 thread 1 
+OMP: Info #172: KMP_AFFINITY: OS proc 44 maps to socket 0 core 26 thread 0 
+OMP: Info #172: KMP_AFFINITY: OS proc 92 maps to socket 0 core 26 thread 1 
+OMP: Info #172: KMP_AFFINITY: OS proc 42 maps to socket 0 core 28 thread 0 
+OMP: Info #172: KMP_AFFINITY: OS proc 90 maps to socket 0 core 28 thread 1 
+OMP: Info #172: KMP_AFFINITY: OS proc 38 maps to socket 0 core 29 thread 0 
+OMP: Info #172: KMP_AFFINITY: OS proc 86 maps to socket 0 core 29 thread 1 
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173697 thread 0 bound to OS proc set 0
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173780 thread 2 bound to OS proc set 14
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173779 thread 1 bound to OS proc set 2
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173781 thread 3 bound to OS proc set 36
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173782 thread 4 bound to OS proc set 40
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173783 thread 5 bound to OS proc set 44
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173784 thread 6 bound to OS proc set 42
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173785 thread 7 bound to OS proc set 38
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173786 thread 8 bound to OS proc set 48
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173787 thread 9 bound to OS proc set 50
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173788 thread 10 bound to OS proc set 62
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173789 thread 11 bound to OS proc set 84
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173790 thread 12 bound to OS proc set 88
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173791 thread 13 bound to OS proc set 92
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173792 thread 14 bound to OS proc set 90
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173793 thread 15 bound to OS proc set 86
+/mnt/home/icb/samuele.firmani/EMOGI/EMOGI/utils.py:186: RuntimeWarning: divide by zero encountered in power
+  d_inv_sqrt = np.power(rowsum, -0.5).flatten()
+WARNING:tensorflow:From /home/icb/samuele.firmani/EMOGI/EMOGI/train_EMOGI_cv.py:121: The name tf.Session is deprecated. Please use tf.compat.v1.Session instead.
+
+WARNING:tensorflow:From /home/icb/samuele.firmani/EMOGI/EMOGI/train_EMOGI_cv.py:36: The name tf.sparse_placeholder is deprecated. Please use tf.compat.v1.sparse_placeholder instead.
+
+WARNING:tensorflow:From /home/icb/samuele.firmani/EMOGI/EMOGI/train_EMOGI_cv.py:37: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+WARNING:tensorflow:From /home/icb/samuele.firmani/EMOGI/EMOGI/train_EMOGI_cv.py:40: The name tf.placeholder_with_default is deprecated. Please use tf.compat.v1.placeholder_with_default instead.
+
+WARNING:tensorflow:From /mnt/home/icb/samuele.firmani/EMOGI/EMOGI/emogi.py:173: The name tf.train.AdamOptimizer is deprecated. Please use tf.compat.v1.train.AdamOptimizer instead.
+
+WARNING:tensorflow:From /home/icb/samuele.firmani/miniconda3/envs/emogi_env/lib/python3.6/site-packages/gcn-1.0-py3.6.egg/gcn/models.py:40: The name tf.variable_scope is deprecated. Please use tf.compat.v1.variable_scope instead.
+
+WARNING:tensorflow:From /mnt/home/icb/samuele.firmani/EMOGI/EMOGI/emogi.py:26: The name tf.random_uniform is deprecated. Please use tf.random.uniform instead.
+
+WARNING:tensorflow:From /mnt/home/icb/samuele.firmani/EMOGI/EMOGI/emogi.py:80: The name tf.summary.histogram is deprecated. Please use tf.compat.v1.summary.histogram instead.
+
+WARNING:tensorflow:From /mnt/home/icb/samuele.firmani/EMOGI/EMOGI/emogi.py:85: The name tf.summary.scalar is deprecated. Please use tf.compat.v1.summary.scalar instead.
+
+WARNING:tensorflow:From /home/icb/samuele.firmani/miniconda3/envs/emogi_env/lib/python3.6/site-packages/gcn-1.0-py3.6.egg/gcn/layers.py:33: The name tf.sparse_tensor_dense_matmul is deprecated. Please use tf.sparse.sparse_dense_matmul instead.
+
+WARNING:tensorflow:From /home/icb/samuele.firmani/miniconda3/envs/emogi_env/lib/python3.6/site-packages/gcn-1.0-py3.6.egg/gcn/models.py:51: The name tf.get_collection is deprecated. Please use tf.compat.v1.get_collection instead.
+
+WARNING:tensorflow:From /home/icb/samuele.firmani/miniconda3/envs/emogi_env/lib/python3.6/site-packages/gcn-1.0-py3.6.egg/gcn/models.py:51: The name tf.GraphKeys is deprecated. Please use tf.compat.v1.GraphKeys instead.
+
+WARNING:tensorflow:From /mnt/home/icb/samuele.firmani/EMOGI/EMOGI/emogi.py:241: calling weighted_cross_entropy_with_logits (from tensorflow.python.ops.nn_impl) with targets is deprecated and will be removed in a future version.
+Instructions for updating:
+targets is deprecated, use labels instead
+WARNING:tensorflow:From /mnt/home/icb/samuele.firmani/EMOGI/EMOGI/emogi.py:251: The name tf.metrics.accuracy is deprecated. Please use tf.compat.v1.metrics.accuracy instead.
+
+WARNING:tensorflow:From /mnt/home/icb/samuele.firmani/EMOGI/EMOGI/emogi.py:255: The name tf.metrics.auc is deprecated. Please use tf.compat.v1.metrics.auc instead.
+
+WARNING:tensorflow:From /home/icb/samuele.firmani/miniconda3/envs/emogi_env/lib/python3.6/site-packages/tensorflow_core/python/ops/metrics_impl.py:808: div (from tensorflow.python.ops.math_ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Deprecated in favor of operator or tf.math.divide.
+WARNING:tensorflow:From /home/icb/samuele.firmani/miniconda3/envs/emogi_env/lib/python3.6/site-packages/tensorflow_core/python/ops/metrics_impl.py:790: where (from tensorflow.python.ops.array_ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use tf.where in 2.0, which has the same broadcast rule as np.where
+WARNING:tensorflow:From /mnt/home/icb/samuele.firmani/EMOGI/EMOGI/train_EMOGI.py:61: The name tf.variables_initializer is deprecated. Please use tf.compat.v1.variables_initializer instead.
+
+WARNING:tensorflow:From /mnt/home/icb/samuele.firmani/EMOGI/EMOGI/train_EMOGI.py:69: The name tf.summary.merge_all is deprecated. Please use tf.compat.v1.summary.merge_all instead.
+
+WARNING:tensorflow:From /mnt/home/icb/samuele.firmani/EMOGI/EMOGI/train_EMOGI.py:72: The name tf.summary.FileWriter is deprecated. Please use tf.compat.v1.summary.FileWriter instead.
+
+WARNING:tensorflow:From /mnt/home/icb/samuele.firmani/EMOGI/EMOGI/train_EMOGI.py:76: The name tf.global_variables_initializer is deprecated. Please use tf.compat.v1.global_variables_initializer instead.
+
+WARNING:tensorflow:From /mnt/home/icb/samuele.firmani/EMOGI/EMOGI/train_EMOGI.py:77: The name tf.local_variables_initializer is deprecated. Please use tf.compat.v1.local_variables_initializer instead.
+
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173801 thread 16 bound to OS proc set 0
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173802 thread 17 bound to OS proc set 2
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173806 thread 18 bound to OS proc set 14
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173807 thread 19 bound to OS proc set 36
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173808 thread 20 bound to OS proc set 40
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173809 thread 21 bound to OS proc set 44
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173810 thread 22 bound to OS proc set 42
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173811 thread 23 bound to OS proc set 38
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173812 thread 24 bound to OS proc set 48
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173813 thread 25 bound to OS proc set 50
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173814 thread 26 bound to OS proc set 62
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173815 thread 27 bound to OS proc set 84
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173816 thread 28 bound to OS proc set 88
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173817 thread 29 bound to OS proc set 92
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173818 thread 30 bound to OS proc set 90
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173819 thread 31 bound to OS proc set 86
+OMP: Info #255: KMP_AFFINITY: pid 173697 tid 173820 thread 32 bound to OS proc set 0
+WARNING:tensorflow:From /mnt/home/icb/samuele.firmani/EMOGI/EMOGI/emogi.py:295: The name tf.train.Saver is deprecated. Please use tf.compat.v1.train.Saver instead.
+
+WARNING:tensorflow:From /home/icb/samuele.firmani/EMOGI/EMOGI/train_EMOGI_cv.py:126: The name tf.reset_default_graph is deprecated. Please use tf.compat.v1.reset_default_graph instead.
+
