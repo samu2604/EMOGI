@@ -84,15 +84,15 @@ def create_adjacency_matrix_and_feature_matrix(ppi_file_path :str, feature_file_
           
         network = np.zeros([len(randomized_gene_list) ,len(randomized_gene_list)])
         print("Adjacency matrix creation")
-        for gene in list_of_hub_genes:
+        for gene in tqdm(list_of_hub_genes):
             genes_connected_to_gene = df_string_ppi[df_string_ppi["gene_name_1"] == gene]["gene_name_2"].values
             connected_to_gene_interaction_strength_genes = df_string_ppi[df_string_ppi["gene_name_1"] == gene]["experimental"].values
             index_gene = randomized_gene_list.index(gene)
             for gene_connected, gene_connected_interaction_strength in zip(genes_connected_to_gene, connected_to_gene_interaction_strength_genes):          
                 index_gene_connected_to_gene = randomized_gene_list.index(gene_connected)
                 if network[index_gene, index_gene_connected_to_gene] == 0 and index_gene != index_gene_connected_to_gene: 
-                    network[index_gene, index_gene_connected_to_gene] = 1.0#gene_connected_interaction_strength/max_interaction_strength # here we can use a value proportional to the interaction strength 
-                    network[index_gene_connected_to_gene, index_gene] = 1.0#gene_connected_interaction_strength/max_interaction_strength # here we can use a value proportional to the interaction strength
+                    network[index_gene, index_gene_connected_to_gene] = gene_connected_interaction_strength/max_interaction_strength # here we can use a value proportional to the interaction strength 
+                    network[index_gene_connected_to_gene, index_gene] = gene_connected_interaction_strength/max_interaction_strength # here we can use a value proportional to the interaction strength
         np.savetxt(new_dir /"network.csv", network, delimiter = ",") 
 
         features = np.zeros([len(randomized_gene_list) ,2])
@@ -102,8 +102,11 @@ def create_adjacency_matrix_and_feature_matrix(ppi_file_path :str, feature_file_
             features[gene_index, 1] = features_dict[gene][5] # proteomics at 24h  
         np.savetxt(new_dir / "features.csv", features, delimiter = ",")                 
     else:
-        network =  np.loadtxt(open(new_dir_name + "/network.csv"), delimiter = ",") 
+        print("load network")
+        network =  np.loadtxt(open(new_dir_name + "/network.csv"), delimiter = ",")
+        print("load features") 
         features = np.loadtxt(open(new_dir_name + "/features.csv"), delimiter = ",")  
+        print("load gene list")
         randomized_gene_list = np.genfromtxt(new_dir_name + "/randomized_gene_list.txt", dtype=str)    
 
     node_names = []
@@ -132,7 +135,7 @@ def train_test_val_sampler(list_to_sample, number_train_samples, number_test_sam
     return training_samples, test_samples, validation_samples
         
     
-def train_test_val_split(host_factor_data_path, strong_host_factors :str, host_factors_shared_from_stukalov_and_others :str):
+def train_test_val_split(potential_host_factors_from_publications, strong_host_factors :str, host_factors_shared_from_stukalov_and_others :str):
     node_gene_list = np.genfromtxt("input_data_proteome_transcriptome/randomized_gene_list.txt", dtype=str)
     nodes_number = len(node_gene_list)
     y_train = np.zeros([nodes_number, 1], float)
@@ -151,13 +154,13 @@ def train_test_val_split(host_factor_data_path, strong_host_factors :str, host_f
     # join positives
     positive_host_factors = np.unique(np.concatenate((positive_host_factors, host_factors_shared_from_stukalov_and_others), axis = None))
     
-    host_factors = pd.ExcelFile(host_factor_data_path)
+    host_factors = pd.ExcelFile(potential_host_factors_from_publications)
     host_factors_dfs = {sheet_name: host_factors.parse(sheet_name) for sheet_name in host_factors.sheet_names}
     potential_host_factors_to_remove = host_factors_dfs["host_factors"]["Gene name"].unique()    
     
     # select and split positive labels in my dataset
     positive_labels = []
-    for gene in positive_host_factors:
+    for gene in tqdm(positive_host_factors, desc="select and split positive labels in my dataset"):
         if gene in node_gene_list:
             positive_labels.append(gene)
     
@@ -168,7 +171,7 @@ def train_test_val_split(host_factor_data_path, strong_host_factors :str, host_f
     
     # select the potential negatives in my dataset
     potential_negative_labels = []     
-    for gene in node_gene_list:
+    for gene in tqdm(node_gene_list, desc="select the potential negatives in my dataset"):
         if gene not in potential_host_factors_to_remove and gene not in positive_labels:
             potential_negative_labels.append(gene)
             
@@ -198,14 +201,19 @@ def feature_fold_change_pvalue_combination(log2fc, p_val, is_absolute_val):
         return (log2fc/np.abs(log2fc))*np.sqrt(np.abs(log2fc * np.log10(p_val)))
     
 
-def compute_common_genes(proteome_file, stranscriptome_file):
+def find_detected_genes(proteome_file, stranscriptome_file, are_genes_shared :bool):
     df_proteomics = pd.read_csv(proteome_file)
     df_transcriptomics = pd.read_csv(stranscriptome_file)
     
     common_genes = []
-    for gene_name in df_proteomics["gene_name"].unique():
-        if gene_name in df_transcriptomics["gene_name"].unique():
-            common_genes.append(gene_name)
+    if are_genes_shared:
+        for gene_name in df_proteomics["gene_name"].unique():
+            if gene_name in df_transcriptomics["gene_name"].unique():
+                common_genes.append(gene_name)
+    else:
+        proteomics_genes = df_proteomics["gene_name"].unique()
+        transcriptomics_genes = df_transcriptomics["gene_name"].unique()
+        common_genes = np.unique(np.concatenate((proteomics_genes, transcriptomics_genes), axis = None))       
     return df_proteomics, df_transcriptomics, common_genes   
 
 def extract_feature_from_row(row, time_list, feature_vector, is_used_abs_value_for_up_down_regulated, fold_change_first_part :str, p_val_first_part :str):
@@ -214,28 +222,54 @@ def extract_feature_from_row(row, time_list, feature_vector, is_used_abs_value_f
         pval = row[ p_val_first_part + time].values
         if len(l2fc) == 0:
             l2fc.append(10 ** -9)
+        elif np.isnan(l2fc).any():
+            l2fc[0] =  10 ** -9   
         if len(pval) == 0:
-            pval.append(0.99)    
+            pval.append(0.99)
+        elif np.isnan(pval).any():
+            pval[0] == 0.99        
         feature_vector.append(feature_fold_change_pvalue_combination( l2fc[0], pval[0], is_used_abs_value_for_up_down_regulated))
     
-    return feature_vector              
+def compute_uninformative_features_mean_and_std(df_omic):
+    log2fcs = df_omic["fold_change_log2.SARS_CoV2@6h_vs_mock@6h"].values           
+    pvalues = df_omic["p_value.SARS_CoV2@6h_vs_mock@6h"].values
+    
+    vectorized_feature_fold_change_pvalue_combination = np.vectorize(feature_fold_change_pvalue_combination)
+    features = vectorized_feature_fold_change_pvalue_combination(log2fcs, pvalues, is_absolute_val=False)
+    return np.nanmean(features), np.nanstd(features)
 
-def proteomics_trascriptomics_features_prep(timestamp_list_transcriptomics, timestamp_list_proteomics, is_used_abs_value_for_up_down_regulated :bool):
+def append_uninformative_features(feature_vector, mu, sigma, is_used_abs_value_for_up_down_regulated):
+    for i in range(3):
+            if is_used_abs_value_for_up_down_regulated:
+                feature_vector.append(abs(np.random.normal(mu, sigma*0.25, 1)[0])) 
+            else:                 
+                feature_vector.append(np.random.normal(mu, sigma*0.25, 1)[0])
+                
+def proteomics_trascriptomics_features_prep(timestamp_list_transcriptomics, timestamp_list_proteomics, is_used_abs_value_for_up_down_regulated :bool, return_detected_genes):
     if os.path.isfile("feature_dict_absolute_value.json") and is_used_abs_value_for_up_down_regulated:
         return
     elif os.path.isfile("feature_dict_signed_value.json") and not is_used_abs_value_for_up_down_regulated:
         return
         
-    df_proteomics, df_transcriptomics, common_genes  =  compute_common_genes("proteome_cell_lines.zip", "transcriptome.zip")
+    df_proteomics, df_transcriptomics, common_genes = return_detected_genes()
+    mu_transcriptomics, sigma_transcriptomics = compute_uninformative_features_mean_and_std(df_transcriptomics)
+    mu_proteomics, sigma_proteomics = compute_uninformative_features_mean_and_std(df_proteomics)
+    
     feature_dict = {}
 
     for gene in tqdm(common_genes):
         feature_vector = []
         row = df_transcriptomics[df_transcriptomics["gene_name"] == gene]
-        feature_vector = extract_feature_from_row(row, timestamp_list_transcriptomics, feature_vector, is_used_abs_value_for_up_down_regulated, "fold_change_log2", "p_value")
+        if len(row) == 0:
+            append_uninformative_features(feature_vector, mu_transcriptomics, sigma_transcriptomics, is_used_abs_value_for_up_down_regulated)
+        else:    
+            extract_feature_from_row(row, timestamp_list_transcriptomics, feature_vector, is_used_abs_value_for_up_down_regulated, "fold_change_log2", "p_value")
             
         row = df_proteomics[df_proteomics["gene_name"] == gene]    
-        feature_vector = extract_feature_from_row(row, timestamp_list_proteomics, feature_vector, is_used_abs_value_for_up_down_regulated, "fold_change_log2", "p_value")
+        if len(row) == 0:
+            append_uninformative_features(feature_vector, mu_proteomics, sigma_proteomics, is_used_abs_value_for_up_down_regulated)
+        else:    
+            extract_feature_from_row(row, timestamp_list_proteomics, feature_vector, is_used_abs_value_for_up_down_regulated, "fold_change_log2", "p_value")
            
         feature_dict.update({gene : feature_vector})
     
@@ -246,22 +280,18 @@ def proteomics_trascriptomics_features_prep(timestamp_list_transcriptomics, time
     
     
 
-def proteomics_trascriptomics_ppi_prep():
+def proteomics_trascriptomics_ppi_prep(return_detected_genes):
     if os.path.isfile("df_string_transcriptomics_proteomics.zip"):
         return    
-    df_proteomics, df_transcriptomics, common_genes  =  compute_common_genes("proteome_cell_lines.zip", "transcriptome.zip") 
-            
+    _, _, detected_genes  =  return_detected_genes()
+    
+    print(f"The total number of detected genes is: {len(detected_genes)}")        
     df_string_ppi = pd.read_csv("df_string_ppi_with_gene_names.zip")
-    print("Removing edjes connecting genes that do not have complete transcriptomics and proteomics features")
-    counter = 0
     list_of_row_indices_to_drop = []
-    print(f"Counter value to {len(df_string_ppi)}")
-    for index, row in df_string_ppi.iterrows():
-        if (row["gene_name_1"] not in common_genes) or (row["gene_name_2"] not in common_genes):
-            counter += 1
+    row_number = df_string_ppi.shape[0]
+    for index, row in tqdm(df_string_ppi.iterrows(), desc=f"Finding genes not detected at all by transcriptomics and proteomics counting up to {row_number}"):
+        if (row["gene_name_1"] not in detected_genes) or (row["gene_name_2"] not in detected_genes):
             list_of_row_indices_to_drop.append(index)
-            if counter % 100000 == 0:    
-                print(index)
     df_string_ppi.drop(list_of_row_indices_to_drop, axis = 0, inplace = True)            
     df_string_ppi.reset_index(drop = True, inplace = True)
     df_string_ppi.to_csv('df_string_transcriptomics_proteomics.zip', index=False, compression = dict(method='zip', archive_name='df_string_transcriptomics_proteomics.csv'))
@@ -383,7 +413,7 @@ def parse_args():
                     default="../ARTIvir_CoV_minimal_combined_dset.xlsx",
                     type=str
                     )
-    parser.add_argument('--host_factor_data_path', help='Host factors file data path',
+    parser.add_argument('--potential_host_factors_from_publications', help='Host factors file data path',
                     default="../host_factors_from_publications.xlsx",
                     type=str
                     )    
@@ -420,7 +450,7 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     input_data_path = args.input_data_path
-    host_factor_data_path = args.host_factor_data_path
+    potential_host_factors_from_publications = args.potential_host_factors_from_publications
     path_to_string = args.path_to_string
     uniprot_file_path = args.uniprot_file_path
     strong_host_factors = args.strong_host_factors
@@ -434,15 +464,16 @@ if __name__ == "__main__":
     map_ensp_to_gene_name(uniprot_file_path)
     add_gene_names_to_ppi()
     if input_data_type == "transcriptomics-proteomics":
-        proteomics_trascriptomics_ppi_prep()
+        return_detected_genes = lambda: find_detected_genes("proteome_cell_lines.zip", "transcriptome.zip", are_genes_shared=False)
+        proteomics_trascriptomics_ppi_prep(return_detected_genes)
         time_stamp_list = [".SARS_CoV2@6h_vs_mock@6h", ".SARS_CoV2@12h_vs_mock@12h", ".SARS_CoV2@24h_vs_mock@24h"]
-        proteomics_trascriptomics_features_prep(time_stamp_list, time_stamp_list, True)
+        proteomics_trascriptomics_features_prep(time_stamp_list, time_stamp_list, is_used_abs_value_for_up_down_regulated=False, return_detected_genes=return_detected_genes)
 
         network, features, node_names, feat_names = create_adjacency_matrix_and_feature_matrix("df_string_transcriptomics_proteomics.zip", "feature_dict_signed_value.json")
 
-        y_train, train_mask, y_test, test_mask, y_val, val_mask = train_test_val_split(host_factor_data_path, strong_host_factors, host_factors_shared_from_stukalov_and_others)
+        y_train, train_mask, y_test, test_mask, y_val, val_mask = train_test_val_split(potential_host_factors_from_publications, strong_host_factors, host_factors_shared_from_stukalov_and_others)
         
-        if is_trivial_features:
-           features, hdf5_file_name = create_trivial_features(features, y_train, train_mask, y_test, test_mask, y_val, val_mask, hdf5_file_name)
+        # if is_trivial_features:
+        #    features, hdf5_file_name = create_trivial_features(features, y_train, train_mask, y_test, test_mask, y_val, val_mask, hdf5_file_name)
         
         create_hdf5_container(network, features, node_names, feat_names, y_train, train_mask, y_test, test_mask, y_val, val_mask, hdf5_file_name)
